@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "../store/authStore";
@@ -11,7 +11,10 @@ const EmailVerificationPage = () => {
 
 	const { error, isLoading, verifyEmail } = useAuthStore();
 
-	const handleChange = (index, value) => {
+	// Handle code input changes
+	const handleChange = useCallback((index, value) => {
+		if (value === code[index]) return; // Early exit if value hasn't changed
+
 		const newCode = [...code];
 
 		// Handle pasted content
@@ -35,15 +38,17 @@ const EmailVerificationPage = () => {
 				inputRefs.current[index + 1].focus();
 			}
 		}
-	};
+	}, [code]);
 
-	const handleKeyDown = (index, e) => {
+	// Handle backspace key press
+	const handleKeyDown = useCallback((index, e) => {
 		if (e.key === "Backspace" && !code[index] && index > 0) {
 			inputRefs.current[index - 1].focus();
 		}
-	};
+	}, [code]);
 
-	const handleSubmit = async (e) => {
+	// Handle form submission
+	const handleSubmit = useCallback(async (e) => {
 		e.preventDefault();
 		const verificationCode = code.join("");
 		try {
@@ -52,15 +57,16 @@ const EmailVerificationPage = () => {
 			toast.success("Email verified successfully");
 		} catch (error) {
 			console.log(error);
+			toast.error("Failed to verify email. Please try again.");
 		}
-	};
+	}, [code, navigate, verifyEmail]);
 
-	// Auto submit when all fields are filled
+	// Auto-submit when all fields are filled
 	useEffect(() => {
 		if (code.every((digit) => digit !== "")) {
 			handleSubmit(new Event("submit"));
 		}
-	}, [code]);
+	}, [code, handleSubmit]);
 
 	return (
 		<div className='max-w-md w-full bg-gray-800 bg-opacity-50 backdrop-filter backdrop-blur-xl rounded-2xl shadow-xl overflow-hidden'>
@@ -82,11 +88,12 @@ const EmailVerificationPage = () => {
 								key={index}
 								ref={(el) => (inputRefs.current[index] = el)}
 								type='text'
-								maxLength='6'
+								maxLength='1'
 								value={digit}
 								onChange={(e) => handleChange(index, e.target.value)}
 								onKeyDown={(e) => handleKeyDown(index, e)}
 								className='w-12 h-12 text-center text-2xl font-bold bg-gray-700 text-white border-2 border-gray-600 rounded-lg focus:border-green-500 focus:outline-none'
+								aria-label={`Verification code digit ${index + 1}`}
 							/>
 						))}
 					</div>
@@ -105,4 +112,5 @@ const EmailVerificationPage = () => {
 		</div>
 	);
 };
+
 export default EmailVerificationPage;
